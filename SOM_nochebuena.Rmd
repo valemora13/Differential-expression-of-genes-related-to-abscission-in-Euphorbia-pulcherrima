@@ -157,7 +157,7 @@ head(mat.eval)
 aux.eval<-paste0(Zona,"_",Día);
 head(aux.eval)
 
-keep<-array(FALSE,nrow(mat.eval)); # Arreglo de falsos
+keep<-array(FALSE,nrow(mat.eval)); # Fix false values in the array
 head(keep)
 cutoff<-ceiling(table(aux.eval)/2); # Round up half of aux.eval.
 cutoff
@@ -378,9 +378,9 @@ plot(som.xp,type="quality", pch = "°");
 
 ### Cluster Dendogram
 ```{r}
-# Puntos en dimensiones
-# Sample → tratamientos/condiciones/experimentos en genes
-# Neuron → genes en tratamientos/condiciones/experimentos
+# Points in dimensions
+# Sample → treatments/conditions/experiments in genes
+# Neuron → genes in treatments/conditions/experiments
 
 
 # Manhattan distance
@@ -406,7 +406,6 @@ plot(clust.neuron, main = 'Euclidean Neuron dendogram')
 #      ylab = "Altura")
 # dev.off()
 
-
 # # Extrae los nombres de las neuronas
 # neuron_names <- som.xp$codes[[1]][, 1]
 # 
@@ -420,17 +419,6 @@ plot(clust.neuron, main = 'Euclidean Neuron dendogram')
 # 
 # print("Cluster 2:")
 # print(cluster2_names)
-
-
-
-
-
-
-
-
-
-
-
 
 # png("Neuron_dendogramp1.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 # # Filtra las filas de V1 a V27
@@ -615,7 +603,7 @@ for (i in which(sapply(enriched.up,length)>0)){
 # C1 d2 en d0, C3 d0 en d2
 # C3
 # Call the pathway's table
-# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+# Cluster 1 - up in 0 compared to 2 → 0 Day/2 Day
 setwd("/bioinfo/")
 
 map04075 <- read.delim("map04075.txt", stringsAsFactors=FALSE, row.names=1)
@@ -640,7 +628,7 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
 
 # Crear el PNG con fondo transparente
-png("map04075.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# png("map04075.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
 # Crear el gráfico con ggplot2
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
@@ -654,7 +642,7 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   labs(title = "Expresión de map04075 en Día 0 a comparación de Día 2", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
 
-dev.off()  # Cerrar el dispositivo gráfico
+dev.off()  # Closes the graphic device
 
 ```
 
@@ -664,6 +652,7 @@ dev.off()  # Cerrar el dispositivo gráfico
 # C1
 # Call the pathway's table
 # Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+# Cluster - 1
 setwd("/bioinfo/")
 
 map00940 <- read.delim("map00940.txt", stringsAsFactors=FALSE, row.names=1)
@@ -688,9 +677,9 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
 
 # Crear el PNG con fondo transparente
-png("map00940.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# png("map00940.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
-# Crear el gráfico con ggplot2
+# Create the graphic with ggplot2
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
   theme(
@@ -702,7 +691,7 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   labs(title = "Expresión de map00940 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
 
-dev.off()  # Cerrar el dispositivo gráfico
+dev.off()  # Closes the graphic device
 
 ```
 
@@ -712,7 +701,7 @@ dev.off()  # Cerrar el dispositivo gráfico
 # C1 d2 en d0, C3 d0 en d2
 # C1
 # Call the pathway's table
-# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+# Cluster- 1 upd in 0 compared to 2 → 0 Day/2 Day
 setwd("/bioinfo/")
 
 map00360 <- read.delim("map00360.txt", stringsAsFactors=FALSE, row.names=1)
@@ -737,7 +726,7 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
 
 # Crear el PNG con fondo transparente
-png("map00360.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# png("map00360.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
 # Crear el gráfico con ggplot2
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
@@ -761,7 +750,7 @@ dev.off()  # Cerrar el dispositivo gráfico
 # C1 d2 en d0, C3 d0 en d2
 # C3 y C1
 # Call the pathway's table
-# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+# Cluster 1 → up in 0 compared to 2 → 0 Day/2 Day
 setwd("/bioinfo/")
 
 map00592 <- read.delim("map00592.txt", stringsAsFactors=FALSE, row.names=1)
@@ -786,9 +775,11 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
 
 # Crear el PNG con fondo transparente
-png("map00592.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# png("map00592.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
 # Crear el gráfico con ggplot2
+- 
+# Create the graphic with gpplo
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
   theme(
@@ -800,7 +791,7 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   labs(title = "Expresión de map00260 en Día 0 a comparación de Día 2", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
 
-dev.off()  # Cerrar el dispositivo gráfico
+dev.off()  # Closes the graphic device
 
 ```
 
@@ -835,53 +826,20 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
 
 # Crear el PNG con fondo transparente
-png("map00071.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# png("map00071.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
-# Crear el gráfico con ggplot2
+# Create the graphic with ggplot2
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
-  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  geom_bar(stat = "identity") +  # 'stat = "identity"' for logFC
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1),
-    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
-    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
-    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+    panel.background = element_rect(fill = "transparent", color = NA),  # Background of the transparent panel
+    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the transparent panel
+    legend.background = element_rect(fill = "transparent")              # Background of the transparent panel
   ) +
   labs(title = "Expresión de map00071 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
 
-dev.off()  # Cerrar el dispositivo gráfico
+dev.off()  # Closes the graphic device
 
 ```
-
-
-```{r}
-# Crear listas de genes por zona y día para el día D0
-DGE_Venn_data <- list(
-  Abscisión = DGE_lists[['Abscisión_D0']],
-  Distal = DGE_lists[['Distal_D0']],
-  Proximal = DGE_lists[['Proximal_D0']]
-)
-
-# Crear el diagrama de Venn usando ggVennDiagram
-ggVennDiagram(DGE_Venn_data, label = "count") + 
-  scale_fill_gradient(low = "lightblue", high = "blue") +
-  theme_minimal()
-```
-
-
-```{r}
-# Diagrama de Venn para todas las zonas en D0 y D2
-ggVennDiagram(DEG_0, label = "count") +
-  scale_fill_gradient(low = "lightblue", high = "blue") +
-  ggtitle("DGE Venn Diagram - Zonas y Días") +
-  theme_minimal()
-
-ggVennDiagram(DEG_2, label = "count") +
-  scale_fill_gradient(low = "lightblue", high = "blue") +
-  ggtitle("DGE Venn Diagram - Zonas y Días") +
-  theme_minimal()
-
-```
-
-
-
