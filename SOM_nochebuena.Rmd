@@ -1,0 +1,887 @@
+---
+title: "SOM_nochebuena"
+author: "Valeria Morales"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<h1>
+  <span style="color: red;">N</span><span style="color: green;">o</span><span style="color: red;">c</span><span style="color: green;">h</span><span style="color: red;">e</span><span style="color: green;">b</span><span style="color: red;">u</span><span style="color: green;">e</span><span style="color: red;">n</span><span style="color: green;">a</span>
+</h1>
+ 
+# Sequencing project on *Euphorbia pulcherrima*
+
+We will do differential expression of different Zonas in the flower bud in different times after cutting in the poinsettia plant. The data was trimmed and then mapped with kallisto. We are going to compare Día 0 vs. Día 2 on every Zona with linear regression.
+
+```{r setup, include=FALSE}
+# # Set the root directory for all chunks of the notebook
+knitr::opts_knit$set(root.dir = "C:/bioinfo/Mapeo_nochebuena/Kallisto_CDHIT/")
+```
+
+```{r}
+# To know in which directory you are working
+getwd()
+# To know which files are in the working directory
+list.files()
+```
+
+**Install packages**
+```{r}
+# # Install and update packages if necesarry only
+# if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+# BiocManager::install("DESeq2")
+# BiocManager::install("edgeR")
+# BiocManager::install("limma")
+# install.packages(c("kohonen","ggplot2","gplots","VennDiagram","pheatmap","dendsort","ggVennDiagram"));
+```
+
+**Load packages**
+```{r, warning=FALSE}
+library(kohonen);	#This is the library for the SOM
+library(ggplot2);	#This library is for transparency in the colors
+library(gplots);	#Easy heatmaps
+library(VennDiagram);	#self explanatory
+library(ggVennDiagram);	#Alternativa visual
+library(pheatmap);	#pretty heatmaps
+library(dendsort);	#sorting dendrograms
+library(DESeq2);	#Normalization and everything related to that
+library(limma)
+library(edgeR)
+```
+
+**Export table**
+```{r}
+# This code collects every text file in the working directory, collects the final column 'tpm' and binds them together
+
+# outpath<-"/bioinfo/Mapeo_nochebuena/Resultados_mapeo/" # Where the results are going to be saved
+
+# Initializing an empty object to accumulate data frames
+tabla <- NULL
+
+for(x in list.files()) {
+  # To only take files from Día 0 and Día 2
+  if (grepl("_D0_", x) | grepl("_D2_", x)) {
+  tab1 = read.table(x, header=TRUE, row.names = 1, sep = "\t", comment.char = "")
+
+    # Select the last column
+  last_column_name = colnames(tab1)[ncol(tab1)]  # 'tpm' column
+  tab1_select = tab1[, last_column_name, drop = FALSE]  # Mantain as a data frame
+
+  # Extract the name of the file without the extension
+  file_name <- tools::file_path_sans_ext(x)
+
+  # Change the name of the column to be the name of each file
+  colnames(tab1_select) <- file_name
+
+  # Combine the columns
+  if (is.null(tabla)) {
+    tabla <- tab1_select
+  } else {
+    tabla <- cbind(tabla, tab1_select)
+  }
+}
+}
+
+# write.table(counts,sep = "\t",'Counts.txt')
+
+# getwd()
+head(tabla)
+dim(tabla)
+
+
+# # If we have a file already compiled with every 'tpm' column we can export it this way
+# 
+# # Create a folder to save all the results
+#  outpath<-"/bioinfo/Mapeo_nochebuena/Resultados_mapeo/"
+#  # dir.create(outpath, showWarnings=FALSE)
+# 
+# # Export the table and save it in 'counts'
+#  counts <- read.delim("Metadata.txt", stringsAsFactors=FALSE, row.names=1)
+# 
+# # Visualize the table
+#  View(counts)
+```
+
+### Filters
+```{r}
+set.seed(42);
+
+# # Omits blank counts
+# counts = na.omit(counts)
+
+# Filters genes that have less than 5 reads and the sum of all rows gives less than 9 reads. 
+counts = tabla[rowSums(cpm(tabla) >= 5) >= 9,]
+
+# counts <- counts[rowSums(counts)>0,];	#Remove all genes that have no expression
+
+head(counts)
+dim(counts)
+
+```
+
+```{r}
+# Filter the Zona
+head(counts)
+Zona <- as.factor(sapply(strsplit(colnames(counts),split="_"),"[[",1));
+names(Zona) <- colnames(counts);
+Zona
+
+# Filter the Día
+Día<-as.factor(sapply(strsplit(colnames(counts),split="_"),"[[",2));
+names(Día)<-colnames(counts);
+Día
+
+# Data frame
+coldata<-data.frame(Zona=Zona, Día=Día);
+rownames(coldata)<-colnames(counts);
+# View(coldata)
+```
+
+### DESeq
+```{r}
+# Model
+counts = na.omit(counts)
+
+# dds<-DESeqDataSetFromMatrix(countData=as.matrix(round(counts)), colData=coldata, design = ~Día);
+
+# Full model taking into acount the Zona, Día and the interaction between the former two
+dds<-DESeqDataSetFromMatrix(countData=as.matrix(round(counts)), colData=coldata, design = ~Zona+Zona*Día+Día);
+
+cpm<-fpm(dds, robust = FALSE);	
+
+# Clean data // evaluation matrix
+mat.eval<-cpm>1; 
+head(mat.eval)
+
+# Evaluation auxiliary
+aux.eval<-paste0(Zona,"_",Día);
+head(aux.eval)
+
+keep<-array(FALSE,nrow(mat.eval)); # Arreglo de falsos
+head(keep)
+cutoff<-ceiling(table(aux.eval)/2); # Round up half of aux.eval.
+cutoff
+dim(keep)
+```
+
+
+```{r}
+for (i in unique(aux.eval)){
+	keep<-keep|(rowSums(mat.eval[,which(aux.eval==i)])>=cutoff[i]); # TRUE if at least 1 of the treatments with greater than 1 cpm
+	head(keep)
+	sum(keep)/length(keep)
+}
+```
+
+
+```{r}
+dds.1<-dds[keep,]; # Matrix in the rows where keep is TRUE
+dds.1 <- estimateSizeFactors(dds.1);	# You have to estimate size factors
+
+vst.1 <- vst(dds.1);
+
+# Standarized matrix
+std.mat<-t(scale(t(assay(vst.1))));
+head(std.mat)
+
+# Subtract mean, divide by standard deviation 
+```
+
+### PCA
+```{r}
+# Creates the components to build a PCA
+pca<-princomp(std.mat);
+pca$sdev^2
+```
+
+### Bar plot
+```{r}
+# Bar plot to visualize the PCA components' sizes
+barras<-100*(pca$sdev)^2/sum((pca$sdev)^2);
+barplot(barras, col = rainbow(18)) # 18 colors for 18 samples
+
+# x11(); # Plots the image sepparetly when run in R 
+```
+
+### Plot loadings
+```{r}
+# Loadings Plots: we can notice the difference between Día 0 and 2 clearly with colors
+
+# Each point is a condition
+
+#
+col.Día <- as.character(Día);
+col.Día[col.Día=="D0"]<-"chartreuse";
+col.Día[col.Día=="D2"]<-"tomato";
+col.Día[col.Día=="D4"]<-"slateblue";
+col.Día[col.Día=="D6"]<-"yellow";
+
+#
+pch.Zona<-as.character(Zona);
+pch.Zona[pch.Zona=="Abscisión"]<-"15";
+pch.Zona[pch.Zona=="Distal"]<-"16";
+pch.Zona[pch.Zona=="Proximal"]<-"17";
+pch.Zona<-as.numeric(pch.Zona);
+
+# Loop to plot PCAs comparing the components until the seventh one
+for (i in 1){
+	for (j in (i+1):7) {
+		plot(pca$loadings[,c(i,j)], main = "PCA Loadings", xlab=paste0("PC ",i," (",round(barras[i],1),"% variance)"), ylab=paste0("PC ",j," (",round(barras[j],1),"% variance)"), type = "n");
+		# Plot the points with the names
+	# text(pca$loadings[,c(i,j)], as.character(Zona), col = col.trt);
+    # Plot only the points
+	  points(pca$loadings[,c(i,j)], col = col.Día, pch = pch.Zona, cex = 1.5);
+        legend("bottomright", legend = c('0','2','4','6' ), fill = c('chartreuse','tomato','slateblue','yellow' ), bty = "n");
+	      legend("topright", legend = c('AZ','DT','PX'), pch = c(15,16,17), bty = "n");
+	}
+}
+
+
+# # Save image without background
+# png("PCA_loadings.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# for (i in 1){
+# 	for (j in 2) {
+# 		plot(pca$loadings[,c(i,j)], main = "Cargas de PCA", xlab=paste0("Componente Principal ",i," (",round(barras[i],1),"% varianza)"), ylab=paste0("Componente Principal ",j," (",round(barras[j],1),"% varianza)"), type = "n");
+# 		# Plot the points with the names
+# 	# text(pca$loadings[,c(i,j)], as.character(Zona), col = col.trt);
+#     # Plot only the points
+# 	  points(pca$loadings[,c(i,j)], col = col.Día, pch = pch.Zona, cex = 1.5);
+#         legend("bottomright", legend = c('Día 0','Día 2'), fill = c('slateblue','tomato'), bty = "n");
+# 	      legend("topright", legend = c('AZ','DT','PX'), pch = c(15,16,17), bty = "n");
+# 	}
+# }
+# dev.off()
+
+```
+
+### Plot loadings 2
+```{r}
+# Loadings Plots: we can not differentiate between sample Zonas
+
+#
+col.Zona <- as.character(Zona);
+col.Zona[col.Zona=="Abscisión"]<-"chartreuse";
+col.Zona[col.Zona=="Distal"]<-"tomato";
+col.Zona[col.Zona=="Proximal"]<-"slateblue";
+
+#
+pch.Día<-as.character(Día);
+pch.Día[pch.Día=="D0"]<-"15";
+pch.Día[pch.Día=="D2"]<-"16";
+pch.Día[pch.Día=="D4"]<-"17";
+pch.Día[pch.Día=="D6"]<-"18";
+pch.Día<-as.numeric(pch.Día);
+
+# Loop to plot PCAs comparing the components until the seventh one
+for (i in 1){
+	for (j in (i+1):7) {
+		plot(pca$loadings[,c(i,j)], main = "PCA Loadings", xlab=paste0("PC ",i," (",round(barras[i],1),"%)"), ylab=paste0("PC ",j," (",round(barras[j],1),"%)"), type = "n"); 
+		# Plot the points with the names
+	# text(pca$loadings[,c(i,j)], as.character(Zona), col = col.trt); 
+    # Plot only the points    
+	  points(pca$loadings[,c(i,j)], col = col.Zona, pch = pch.Día); 
+        legend("bottomright", legend = c('AZ','DT','PX'), fill = c('chartreuse','tomato','slateblue'), bty = "n"); 
+	      legend("topright", legend = c('0','2','4','6' ), pch = c(15,16,17,18), bty = "n"); 
+	}
+}
+```
+
+## Plot scores
+```{r}
+# Each point is a gen
+
+# Loop to plot PCA scores comparing the components until the seventh one
+for (i in 1){
+	for (j in (i+1):7) {
+		plot(pca$scores[,c(i,j)], main = "PCA Scores", xlab=paste0("PC ",i," (",round(barras[i],1),"% variance)"), ylab=paste0("PC ",j," (",round(barras[j],1),"% variance)"), pch='.', cex = 0.05
+		     )
+	}
+}
+
+# # Save image without background
+# png("PCA_scores2.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# for (i in 1){
+# 	for (j in 2) {
+# 		plot(pca$scores[,c(i,j)], main = "Puntajes de PCA", xlab=paste0("Componente Principal ",i," (",round(barras[i],1),"% varianza)"), ylab=paste0("Componente Principal ",j," (",round(barras[j],1),"% varianza)"), pch='.', cex = 1.5
+# 		     )
+# 	}
+# }
+# dev.off()
+```
+
+
+## Differential expression
+```{r}
+#  Likelihood Test: compare models
+# Model = Zona, Día and the interaction between the two
+# Reduced = NULL → null hypothesis 
+# Día:Zona → todo lo que cambia en la interacción específica de Zona-Día
+
+# Null
+dds.1 <- DESeq(dds.1, test="LRT", reduced = ~1);	#You can control by strain, treatment, both or neither
+
+# Changes occurring regardless of the Zonas
+# dds.Día <- DESeq(dds.1, test="LRT", reduced = ~Zona); 
+
+# Changes that occur regardless of the Días
+#dds.Zona <- DESeq(dds.1, test="LRT", reduced = ~Día);
+```
+
+
+
+```{r}
+mat.cpm<-fpm(dds.1)
+
+p.adj<-results(dds.1)$padj
+names(p.adj)<-rownames(mat.cpm)
+
+sum(is.na(p.adj))
+p.adj[is.na(p.adj)]<-1
+
+sum(p.adj<0.01)
+
+sum(p.adj<0.01)/length(p.adj)
+
+DEG.cpm <- mat.cpm[p.adj<0.01,]
+
+log2<-log(DEG.cpm+1,2)
+cs.log2<-t(scale(t(log2)))
+```
+
+```{r}
+# Grid of neurons, if empty it can be made smaller
+som.xp = som(cs.log2,grid = somgrid(25, 25, 	"hexagonal", toroidal=TRUE))
+classif = som.xp$unit.classif;
+classif[1:10]
+names(classif) = rownames(cs.log2);
+```
+
+### Differential expression plot
+```{r}
+plot(som.xp, col = 'orange')
+
+# Mapping
+plot(som.xp,type="mapping", pch = "°", col = rainbow(30));	
+
+# To see that everything has converged
+plot(som.xp,type="changes", pch = "°", col = 'orange');	
+
+# 
+plot(som.xp,type="counts", pch = "°");	
+
+# If the number of neurons is too high, it is advisable to increase the number of neurons in order to group them in a better way.
+plot(som.xp,type="dist.neighbours", pch = "°");	
+
+# Quality of neurons → low number is bad.
+plot(som.xp,type="quality", pch = "°");	
+```
+
+### Cluster Dendogram
+```{r}
+# Puntos en dimensiones
+# Sample → tratamientos/condiciones/experimentos en genes
+# Neuron → genes en tratamientos/condiciones/experimentos
+
+
+# Manhattan distance
+clust.sample<-hclust(dist(t(som.xp$codes[[1]]), method="manhattan"), method="complete")
+plot(clust.sample, main = 'Manhattan Sample dendogram')
+
+# Ward function was wrong for a long time and the new one is 'ward.D2', ward is still available so it can be compatible with old data
+clust.neuron<-hclust(dist(som.xp$codes[[1]], method="manhattan"), method="ward.D2")
+plot(clust.neuron, main = 'Manhattan Neuron dendogram')
+
+# Euclidean distance
+clust.sample<-hclust(dist(t(som.xp$codes[[1]]), method="euclidean"), method="complete")
+plot(clust.sample, main = 'Euclidean Sample dendogram')
+
+clust.neuron<-hclust(dist(som.xp$codes[[1]], method="euclidean"), method="ward.D2")
+plot(clust.neuron, main = 'Euclidean Neuron dendogram')
+
+# png("Sample_dendogram.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# clust.sample <- hclust(dist(t(som.xp$codes[[1]]), method = "manhattan"), method = "complete")
+# plot(clust.sample, 
+#      main = "Dendograma de las muestras (distancia Manhattan)", 
+#      xlab = "Muestras", 
+#      ylab = "Altura")
+# dev.off()
+
+
+# # Extrae los nombres de las neuronas
+# neuron_names <- som.xp$codes[[1]][, 1]
+# 
+# # Obtén los nombres de las neuronas en cada cluster
+# cluster1_names <- neuron_names[clusters == 1]
+# cluster2_names <- neuron_names[clusters == 2]
+# 
+# # Imprime los nombres de las neuronas en cada cluster
+# print("Cluster 1:")
+# print(cluster1_names)
+# 
+# print("Cluster 2:")
+# print(cluster2_names)
+
+
+
+
+
+
+
+
+
+
+
+
+# png("Neuron_dendogramp1.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# # Filtra las filas de V1 a V27
+# subset_1 <- som.xp$codes[[1]][1:27, ]
+# 
+# # Realiza el clustering para el primer subconjunto
+# clust.neuron_1 <- hclust(dist(subset_1, method="manhattan"), method="ward.D2")
+# 
+# # Dibuja el dendrograma para el primer subconjunto
+# plot(clust.neuron_1, main = 'Neuron dendogram')
+# dev.off()
+# 
+# png("Neuron_dendogramp2.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# # Filtra las filas de V28 a V55
+# subset_2 <- som.xp$codes[[1]][28:55, ]
+# 
+# # Realiza el clustering para el segundo subconjunto
+# clust.neuron_2 <- hclust(dist(subset_2, method="manhattan"), method="ward.D2")
+# 
+# # Dibuja el dendrograma para el segundo subconjunto
+# plot(clust.neuron_2, main = '')
+# dev.off()
+
+```
+
+### pHeatmap
+```{r}
+# Heatmap that groups clusters of repressed or overexpressed sequences
+
+ann.colors = list(Día = c('D0'="chartreuse",'D2'="tomato"
+                           # ,'4'='slateblue','6'='yellow'
+                           ),
+					Zona = c(Abscisión="yellow",Distal="mediumorchid",Proximal='pink'))
+
+pheatmap(t(som.xp$codes[[1]]), border_color = "black", scale = "column",
+		show_rownames = T, show_colnames = F,
+		cluster_rows = clust.sample, cutree_rows = 2, annotation_row = data.frame(Día=Día, Zona=Zona),
+		cluster_cols = clust.neuron, cutree_cols = 3,
+		annotation_colors = ann.colors)
+```
+
+### Cluster pHeatmap
+```{r}
+# Heatmap with clusters
+
+clust.pat<-cutree(clust.neuron,3);
+table(clust.pat)
+
+clust.aux <- paste0('C', clust.pat)
+names(clust.aux) <- names(clust.pat)
+
+ann.colors2 = list(Día = c('D0'="#ffff33",'D2'="#e31a1c"
+                           # ,'4'='slateblue','6'='yellow'
+                           ),
+					Zona = c(Abscisión="#33a02c",Distal="#6a3d9a",Proximal='#b15928'),
+					Cluster = c(C1='#1f78b4', C2='#ff7f00', C3='pink'))
+
+pheatmap(t(som.xp$codes[[1]]), border_color = "black", scale = "column", 
+		show_rownames = T, show_colnames = F,
+		cluster_rows = clust.sample, cutree_rows = 2, annotation_row = data.frame(Día=Día, Zona=Zona),
+		cluster_cols = clust.neuron, cutree_cols = 3, annotation_col = data.frame(Cluster=clust.aux),
+		annotation_colors = ann.colors2#, col = heat_colors
+		)
+
+# # Save image without background
+# png("heatmap_no_background.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+# pheatmap(t(som.xp$codes[[1]]), border_color = "black", scale = "column",
+# 		show_rownames = T, show_colnames = F,
+# 		cluster_rows = clust.sample, cutree_rows = 2, annotation_row = data.frame(Día=Día, Zona=Zona),
+# 		cluster_cols = clust.neuron, cutree_cols = 3, annotation_col = data.frame(Cluster=clust.aux),
+# 		annotation_colors = ann.colors2)
+# dev.off()
+
+
+
+
+```
+
+
+```{r}
+# Data frame with sample's type patterns
+type.pattern<-clust.pat[classif];
+names(type.pattern)<-names(classif);
+
+table(type.pattern)
+resultados <- cbind(cs.log2[names(type.pattern)], type.pattern)
+# write.csv(resultados, 'Patrones_tipo_nochebuena.csv')
+head(resultados)
+```
+
+## Enrichment Cluster 2
+```{r}
+# Enriched pathways from the first cluster
+
+ annotation<-read.delim("/bioinfo/eggnog_anotations_clean.tsv.txt", stringsAsFactors=FALSE, row.names=22);
+
+ background <- rownames(dds.1) # Recommended to be scores, it can also be the differential matrix.
+ chosen <- names(type.pattern)[type.pattern == 3]
+
+ enriched.up <- vector("list",4)
+ enriched.up
+ names(enriched.up) <- c("GOs","KEGG_Pathway","KEGG_Module","PFAMs")
+ names(enriched.up)
+
+ FDR.cutoff <- 0.01
+
+ head(annotation)
+
+for (i in 1:length(enriched.up)) {
+  current <- table(unlist(strsplit(annotation[rownames(annotation)%in%background,names(enriched.up)[[i]]],split=",")));
+
+  p.up <- array(-1,length(current));
+  names(p.up) <- names(current);
+
+  ann.up <- unlist(strsplit(annotation[rownames(annotation)%in%chosen,names(enriched.up)[i]],split = ","));
+
+  for (j in 1:length(current)) {
+    #Over-representation	phyper(hitInSample-1, 					hitInPopulation,	failInPopulation, 	sampleSize, 		lower.tail= FALSE);
+    p.up[j] <- phyper(sum(ann.up==names(p.up)[j])-1,      current[j],   sum(current[-j]), length(ann.up),  lower.tail = FALSE)
+
+   }
+
+   q.up <- p.adjust(p.up,method='fdr');
+   enriched.up[[i]] <- names(p.up)[q.up<=FDR.cutoff];
+
+ }
+
+ sapply(enriched.up,length);
+
+ for (i in which(sapply(enriched.up,length)>0)){
+
+  terms<-enriched.up[[i]];
+
+  enrichment<-matrix(-1,nrow(annotation),length(terms));
+  rownames(enrichment)<-rownames(annotation);
+  colnames(enrichment)<-terms;
+
+  for (j in 1:ncol(enrichment)){
+    enrichment[,j]<-grepl(terms[j],annotation[,names(enriched.up)[i]]);
+  }
+
+  enrichment<-enrichment[rowSums(enrichment)>0,,drop=FALSE];
+  results<-cbind(annotation[intersect(chosen,rownames(enrichment)),],cpm[intersect(chosen,rownames(enrichment)),],enrichment[intersect(chosen,rownames(enrichment)),]);
+ }
+ 
+  # write.table(results, sep = "\t", file = paste0("Enrichment_FDR",FDR.cutoff,"_",names(enriched.up)[i],".txt"))
+  # }
+
+ 
+ # write.table(results, file = paste0(outpath,"Enriched_Cluster1.tsv"), sep="\t")
+
+```
+
+
+```{r}
+for (i in which(sapply(enriched.up,length)>0)){
+  
+  terms<-enriched.up[[i]];
+
+  enrichment<-matrix(-1,nrow(annotation),length(terms));
+  rownames(enrichment)<-rownames(annotation);
+  colnames(enrichment)<-terms;
+  
+  for (j in 1:ncol(enrichment)){
+    enrichment[,j]<-grepl(terms[j],annotation[,names(enriched.up)[i]]);
+  }
+
+  enrichment<-enrichment[rowSums(enrichment)>0,,drop=FALSE];
+  results_enrichment<-cbind(annotation[intersect(chosen,rownames(enrichment)),],cpm[intersect(chosen,rownames(enrichment)),],enrichment[intersect(chosen,rownames(enrichment)),]);
+  
+  results_enrichment
+  
+  write.table(results, sep = "\t", file = paste0("enrich_EuphPul_Cluster2",FDR.cutoff,"_",names(enriched.up)[i],".txt"))
+}
+```
+
+
+
+### Bar plot DEG's
+**map04075**
+```{r}
+# C1 d2 en d0, C3 d0 en d2
+# C3
+# Call the pathway's table
+# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+setwd("/bioinfo/")
+
+map04075 <- read.delim("map04075.txt", stringsAsFactors=FALSE, row.names=1)
+
+# Shorten the gen name
+map04075$NodeID <- sub("(_length.*)", "", rownames(map04075))
+
+# New table 'Tag', 'logFC' and 'Regulation'
+map04075$Regulation <- ifelse(map04075$logFC > 0, "Upregulated",
+                              ifelse(map04075$logFC < 0, "Downregulated", "Neutral"))
+
+# Filter up and down regulated genes
+filtered_data <- subset(map04075, Regulation != "Neutral")
+
+new_table <- filtered_data[, c("Tag", "logFC", "Regulation")]
+
+# Bar plot
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # stat = "identity" logFC
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate 'x' axis
+  labs(title = "LogFC by Node 0 Día/2 Día", x = "Function", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
+
+# Crear el PNG con fondo transparente
+png("map04075.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+
+# Crear el gráfico con ggplot2
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
+    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
+    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+  ) +
+  labs(title = "Expresión de map04075 en Día 0 a comparación de Día 2", x = "Descripción del gen dentro del pathway", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
+
+dev.off()  # Cerrar el dispositivo gráfico
+
+```
+
+**map00940**
+```{r}
+# C1 d2 en d0, C3 d0 en d2
+# C1
+# Call the pathway's table
+# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+setwd("/bioinfo/")
+
+map00940 <- read.delim("map00940.txt", stringsAsFactors=FALSE, row.names=1)
+
+# Shorten the gen name
+map00940$NodeID <- sub("(_length.*)", "", rownames(map00940))
+
+# New table 'Tag', 'logFC' and 'Regulation'
+map00940$Regulation <- ifelse(map00940$logFC > 0, "Upregulated",
+                              ifelse(map00940$logFC < 0, "Downregulated", "Neutral"))
+
+# Filter up and down regulated genes
+filtered_data <- subset(map00940, Regulation != "Neutral")
+
+new_table <- filtered_data[, c("Tag", "logFC", "Regulation")]
+
+# Bar plot
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # stat = "identity" logFC
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate 'x' axis
+  labs(title = "LogFC by Node 0 Día/2 Día", x = "Function", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
+
+# Crear el PNG con fondo transparente
+png("map00940.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+
+# Crear el gráfico con ggplot2
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
+    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
+    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+  ) +
+  labs(title = "Expresión de map00940 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
+
+dev.off()  # Cerrar el dispositivo gráfico
+
+```
+
+
+**map00360**
+```{r}
+# C1 d2 en d0, C3 d0 en d2
+# C1
+# Call the pathway's table
+# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+setwd("/bioinfo/")
+
+map00360 <- read.delim("map00360.txt", stringsAsFactors=FALSE, row.names=1)
+
+# Shorten the gen name
+map00360$NodeID <- sub("(_length.*)", "", rownames(map00360))
+
+# New table 'Tag', 'logFC' and 'Regulation'
+map00360$Regulation <- ifelse(map00360$logFC > 0, "Upregulated",
+                              ifelse(map00360$logFC < 0, "Downregulated", "Neutral"))
+
+# Filter up and down regulated genes
+filtered_data <- subset(map00360, Regulation != "Neutral")
+
+new_table <- filtered_data[, c("Tag", "logFC", "Regulation")]
+
+# Bar plot
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # stat = "identity" logFC
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate 'x' axis
+  labs(title = "LogFC by Node 0 Día/2 Día", x = "Function", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
+
+# Crear el PNG con fondo transparente
+png("map00360.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+
+# Crear el gráfico con ggplot2
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
+    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
+    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+  ) +
+  labs(title = "Expresión de map00260 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
+
+dev.off()  # Cerrar el dispositivo gráfico
+
+```
+
+
+**map00592**
+```{r}
+# C1 d2 en d0, C3 d0 en d2
+# C3 y C1
+# Call the pathway's table
+# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+setwd("/bioinfo/")
+
+map00592 <- read.delim("map00592.txt", stringsAsFactors=FALSE, row.names=1)
+
+# Shorten the gen name
+map00592$NodeID <- sub("(_length.*)", "", rownames(map00592))
+
+# New table 'Tag', 'logFC' and 'Regulation'
+map00592$Regulation <- ifelse(map00592$logFC > 0, "Upregulated",
+                              ifelse(map00592$logFC < 0, "Downregulated", "Neutral"))
+
+# Filter up and down regulated genes
+filtered_data <- subset(map00592, Regulation != "Neutral")
+
+new_table <- filtered_data[, c("Tag", "logFC", "Regulation")]
+
+# Bar plot
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # stat = "identity" logFC
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate 'x' axis
+  labs(title = "LogFC by Node 0 Día/2 Día", x = "Function", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
+
+# Crear el PNG con fondo transparente
+png("map00592.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+
+# Crear el gráfico con ggplot2
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
+    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
+    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+  ) +
+  labs(title = "Expresión de map00260 en Día 0 a comparación de Día 2", x = "Descripción del gen dentro del pathway", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
+
+dev.off()  # Cerrar el dispositivo gráfico
+
+```
+
+
+**map00071**
+```{r}
+# C1 d2 en d0, C3 d0 en d2
+# C1
+# Call the pathway's table
+# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
+setwd("/bioinfo/")
+
+map00071 <- read.delim("map00071.txt", stringsAsFactors=FALSE, row.names=1)
+
+# Shorten the gen name
+map00071$NodeID <- sub("(_length.*)", "", rownames(map00071))
+
+# New table 'Tag', 'logFC' and 'Regulation'
+map00071$Regulation <- ifelse(map00071$logFC > 0, "Upregulated",
+                              ifelse(map00071$logFC < 0, "Downregulated", "Neutral"))
+
+# Filter up and down regulated genes
+filtered_data <- subset(map00071, Regulation != "Neutral")
+
+new_table <- filtered_data[, c("Tag", "logFC", "Regulation")]
+
+# Bar plot
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # stat = "identity" logFC
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate 'x' axis
+  labs(title = "LogFC by Node 0 Día/2 Día", x = "Function", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
+
+# Crear el PNG con fondo transparente
+png("map00071.png", width = 2000, height = 1500, res = 300, bg = "transparent")
+
+# Crear el gráfico con ggplot2
+ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
+  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
+    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
+    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+  ) +
+  labs(title = "Expresión de map00071 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
+  scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
+
+dev.off()  # Cerrar el dispositivo gráfico
+
+```
+
+
+```{r}
+# Crear listas de genes por zona y día para el día D0
+DGE_Venn_data <- list(
+  Abscisión = DGE_lists[['Abscisión_D0']],
+  Distal = DGE_lists[['Distal_D0']],
+  Proximal = DGE_lists[['Proximal_D0']]
+)
+
+# Crear el diagrama de Venn usando ggVennDiagram
+ggVennDiagram(DGE_Venn_data, label = "count") + 
+  scale_fill_gradient(low = "lightblue", high = "blue") +
+  theme_minimal()
+```
+
+
+```{r}
+# Diagrama de Venn para todas las zonas en D0 y D2
+ggVennDiagram(DEG_0, label = "count") +
+  scale_fill_gradient(low = "lightblue", high = "blue") +
+  ggtitle("DGE Venn Diagram - Zonas y Días") +
+  theme_minimal()
+
+ggVennDiagram(DEG_2, label = "count") +
+  scale_fill_gradient(low = "lightblue", high = "blue") +
+  ggtitle("DGE Venn Diagram - Zonas y Días") +
+  theme_minimal()
+
+```
+
+
+
