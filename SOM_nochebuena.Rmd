@@ -627,17 +627,17 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   labs(title = "LogFC by Node 0 Día/2 Día", x = "Function", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
 
-# Crear el PNG con fondo transparente
+# Create the PNG with a transparent background
 # png("map04075.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
 # Crear el gráfico con ggplot2
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
-  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  geom_bar(stat = "identity") +  # 'stat = "identity"' to use logFC 
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1),
-    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
-    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
-    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+    panel.background = element_rect(fill = "transparent", color = NA),  # Background of the panel transparent
+    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the graphic transparent
+    legend.background = element_rect(fill = "transparent")              # Background of the legend transparent
   ) +
   labs(title = "Expresión de map04075 en Día 0 a comparación de Día 2", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
@@ -651,8 +651,7 @@ dev.off()  # Closes the graphic device
 # C1 d2 en d0, C3 d0 en d2
 # C1
 # Call the pathway's table
-# Cluster 1 → up en 0 en comparación de 2 → 0 Día/2 Día
-# Cluster - 1
+# Cluster 1 - up in 0 compared to 2 → 0 Day/2 Day
 setwd("/bioinfo/")
 
 map00940 <- read.delim("map00940.txt", stringsAsFactors=FALSE, row.names=1)
@@ -684,9 +683,9 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1),
-    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
-    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
-    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+    panel.background = element_rect(fill = "transparent", color = NA),  # Background of the panel transparent
+    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the graphic transparent
+    legend.background = element_rect(fill = "transparent")              # Background of the legend transparent
   ) +
   labs(title = "Expresión de map00940 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
@@ -728,14 +727,14 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
 # Crear el PNG con fondo transparente
 # png("map00360.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
-# Crear el gráfico con ggplot2
+# Create the graphic with ggplot2
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1),
-    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
-    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
-    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+    panel.background = element_rect(fill = "transparent", color = NA),  # Background of the panel transparent
+    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the graphic transparent
+    legend.background = element_rect(fill = "transparent")              # Background of the legend transparent
   ) +
   labs(title = "Expresión de map00260 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
@@ -743,7 +742,6 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
 dev.off()  # Cerrar el dispositivo gráfico
 
 ```
-
 
 **map00592**
 ```{r}
@@ -777,16 +775,14 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
 # Crear el PNG con fondo transparente
 # png("map00592.png", width = 2000, height = 1500, res = 300, bg = "transparent")
 
-# Crear el gráfico con ggplot2
-- 
 # Create the graphic with gpplo
 ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
-  geom_bar(stat = "identity") +  # 'stat = "identity"' para usar logFC
+  geom_bar(stat = "identity") +  # 'stat = "identity"' to use logFC
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1),
-    panel.background = element_rect(fill = "transparent", color = NA),  # Fondo del panel transparente
-    plot.background = element_rect(fill = "transparent", color = NA),   # Fondo del gráfico transparente
-    legend.background = element_rect(fill = "transparent")              # Fondo de la leyenda transparente
+    panel.background = element_rect(fill = "transparent", color = NA),  # Background of the transparent panel
+    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the graphic transparent
+    legend.background = element_rect(fill = "transparent")              # Background of the legend transparent
   ) +
   labs(title = "Expresión de map00260 en Día 0 a comparación de Día 2", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
@@ -834,8 +830,8 @@ ggplot(filtered_data, aes(x = Tag, y = logFC, fill = Regulation)) +
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1),
     panel.background = element_rect(fill = "transparent", color = NA),  # Background of the transparent panel
-    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the transparent panel
-    legend.background = element_rect(fill = "transparent")              # Background of the transparent panel
+    plot.background = element_rect(fill = "transparent", color = NA),   # Background of the graphic transparent
+    legend.background = element_rect(fill = "transparent")              # Background of the legend transparent
   ) +
   labs(title = "Expresión de map00071 en Día 2 a comparación de Día 0", x = "Descripción del gen dentro del pathway", y = "logFC") +
   scale_fill_manual(values = c("Upregulated" = "green3", "Downregulated" = "firebrick2"))
